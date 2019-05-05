@@ -1,5 +1,11 @@
-
-
+/*************************************************************************************
+* File Name: final_prj.cpp
+* Description: This code is used for object detection and image processing i.e. color
+*              and shape detection and for driving the motor in the direction in which 
+*              object is detected.
+* Authors: Amreeta Sengupta and Ridhi Shah
+* References: Linux manual pages and http://mercury.pr.erau.edu/~siewerts/cec450/code/
+**********************************************************************************.***/
 
 #include <unistd.h>
 #include <stdio.h>
@@ -45,12 +51,12 @@ using namespace std;
 
 #define GPIO_DIR 	"/sys/class/gpio"
 
-timer_t blink_timer_id;
-timer_t blink_timer_id1;
+timer_t timer_id;
+timer_t timer_id1;
 int pwm_gen(uint32_t pin);
 int gpio_blink_off(uint32_t pin);
 void blink_timer_init(uint32_t pin);
-void blink_timer_handle(union sigval sv);
+void timerhandle(union sigval sv);
 void *Sequencer(void *threadp);
 void *image_detect(void *);
 int pin_export(uint32_t pin);
@@ -58,10 +64,10 @@ int pin_dir(uint32_t pin, const char *dir);
 int write_value(uint32_t pin, uint32_t val);
 int read_value(uint32_t pin);
 int delta_t(struct timespec *stop, struct timespec *start, struct timespec *delta_t);
-void set_signal_handler(void);
+void setsig_handler(void);
 void signal_handler(int signo, siginfo_t *info, void *extra) ;
 void blink_timer_init1();
-void blink_timer_handle1(union sigval sv);
+void timerhandle1(union sigval sv);
 void timeset();
 int rc;
 
@@ -295,7 +301,7 @@ int main()
 	struct sched_param rt_param[NUM_THREADS];
 	struct sched_param main_param;
 	
-	set_signal_handler();
+	setsig_handler();
 	rc = pthread_mutex_init(&lock, NULL);
 	if(rc!= 0)
 		handle_error("Mutex init");
@@ -577,7 +583,7 @@ int pwm_gen(uint32_t pin)
 
 int gpio_blink_off(uint32_t pin)
 {
-	timer_delete(blink_timer_id);
+	timer_delete(timer_id);
 	write_value(pin, 0);
 
 	return 0;
@@ -586,45 +592,45 @@ int gpio_blink_off(uint32_t pin)
 void blink_timer_init(uint32_t pin)
 {
 	struct sigevent sev;
-	struct itimerspec trigger;
+	struct itimerspec obj1;
 	memset(&sev, 0, sizeof(struct sigevent));
-    memset(&trigger, 0, sizeof(struct itimerspec));
+    memset(&obj1, 0, sizeof(struct itimerspec));
 
     sev.sigev_notify = SIGEV_THREAD;
-	sev.sigev_notify_function = blink_timer_handle;
+	sev.sigev_notify_function = timerhandle;
 	sev.sigev_value.sival_int = pin;
 
-	timer_create(CLOCK_REALTIME, &sev, &blink_timer_id);
+	timer_create(CLOCK_REALTIME, &sev, &timer_id);
 
-	trigger.it_interval.tv_sec = 0;
-	trigger.it_value.tv_sec = 0;
-	trigger.it_interval.tv_nsec = ON_TIME;
-	trigger.it_value.tv_nsec = ON_TIME;
+	obj1.it_interval.tv_sec = 0;
+	obj1.it_value.tv_sec = 0;
+	obj1.it_interval.tv_nsec = ON_TIME;
+	obj1.it_value.tv_nsec = ON_TIME;
 
-	timer_settime(blink_timer_id, 0, &trigger, NULL);
+	timer_settime(timer_id, 0, &obj1, NULL);
 
 }
 void blink_timer_init1()
 {
 	struct sigevent sev;
-	struct itimerspec trigger;
+	struct itimerspec obj1;
 	memset(&sev, 0, sizeof(struct sigevent));
-    memset(&trigger, 0, sizeof(struct itimerspec));
+    memset(&obj1, 0, sizeof(struct itimerspec));
 
     sev.sigev_notify = SIGEV_THREAD;
-	sev.sigev_notify_function = blink_timer_handle1;
+	sev.sigev_notify_function = timerhandle1;
 
-	timer_create(CLOCK_REALTIME, &sev, &blink_timer_id1);
+	timer_create(CLOCK_REALTIME, &sev, &timer_id1);
 
 	
 
 }
-void blink_timer_handle(union sigval sv)
+void timerhandle(union sigval sv)
 {	
-	uint32_t led;
+	uint32_t pwmpin;
 	static uint32_t count=0;
 
-	led = read_value(sv.sival_int);
+	pwmpin = read_value(sv.sival_int);
 	if(count == 0)
 	{
 		write_value(sv.sival_int,0);
@@ -640,30 +646,30 @@ void blink_timer_handle(union sigval sv)
 	}
 	
 }
-void blink_timer_handle1(union sigval sv)
+void timerhandle1(union sigval sv)
 {	
 	if(timeflag==1)
 	{
 		printf("handler");
 		fflush(stdout);
-	stop1();
-	stop2();
-	timeflag=0;
+		stop1();
+		stop2();
+		timeflag=0;
 	}
 }
 
 void timeset()
 {
-		struct itimerspec trigger;
-	trigger.it_interval.tv_sec = 0;
-	trigger.it_value.tv_sec = 0;
-	trigger.it_interval.tv_nsec = 1000000000;
-	trigger.it_value.tv_nsec = 1000000000;
+	struct itimerspec obj1;
+	obj1.it_interval.tv_sec = 0;
+	obj1.it_value.tv_sec = 0;
+	obj1.it_interval.tv_nsec = 1000000000;
+	obj1.it_value.tv_nsec = 1000000000;
 
-	timer_settime(blink_timer_id, 0, &trigger, NULL);
+	timer_settime(timer_id, 0, &obj1, NULL);
 }
 
-void set_signal_handler(void)
+void setsig_handler(void)
 {
 	struct sigaction action;
  
@@ -676,7 +682,7 @@ void set_signal_handler(void)
 
 void signal_handler(int signo, siginfo_t *info, void *extra) 
 {	
-	timer_delete(blink_timer_id);
+	timer_delete(timer_id);
 	stop1();
 	stop2();
 	sem_close(&semS1);
