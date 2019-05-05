@@ -47,16 +47,16 @@ using namespace std;
 
 timer_t blink_timer_id;
 timer_t blink_timer_id1;
-int gpio_blink(uint32_t pin);
+int pwm_gen(uint32_t pin);
 int gpio_blink_off(uint32_t pin);
 void blink_timer_init(uint32_t pin);
 void blink_timer_handle(union sigval sv);
 void *Sequencer(void *threadp);
 void *image_detect(void *);
-int gpio_export(uint32_t pin);
-int gpio_dir(uint32_t pin, const char *dir);
-int gpio_set_value(uint32_t pin, uint32_t val);
-int gpio_get_value(uint32_t pin);
+int pin_export(uint32_t pin);
+int pin_dir(uint32_t pin, const char *dir);
+int write_value(uint32_t pin, uint32_t val);
+int read_value(uint32_t pin);
 int delta_t(struct timespec *stop, struct timespec *start, struct timespec *delta_t);
 void set_signal_handler(void);
 void signal_handler(int signo, siginfo_t *info, void *extra) ;
@@ -216,19 +216,13 @@ void *image_detect(void *)
 	
 	  cvShowImage("Capture Example", frame);
 	  cvNamedWindow("Threshold lower image", CV_WINDOW_AUTOSIZE);
-	/*  imshow("Threshold lower image", lower_red_hue_range);
-	  cvNamedWindow("Threshold upper image", CV_WINDOW_AUTOSIZE);
-	  imshow("Threshold upper image", upper_red_hue_range);
-	  cvNamedWindow("Combined threshold images", CV_WINDOW_AUTOSIZE);
-	  imshow("Combined threshold images", red_hue_image);
-	  cvNamedWindow("Detected red circles on the input image", CV_WINDOW_AUTOSIZE);
-	  imshow("Detected red circles on the input image", mat_frame); */
+	
 
         char c = cvWaitKey(10);
         if( c == 27 ) break;
           clock_gettime(CLOCK_REALTIME, &finish_time);
 		delta_t(&finish_time, &start_time, &thread_dt);
-		//intf("\nimage processing thread WCET is %ld sec, %ld msec (%ld microsec)\n", thread_dt.tv_sec, (thread_dt.tv_nsec / NSEC_PER_MSEC), (thread_dt.tv_nsec / NSEC_PER_MICROSEC));
+		//printf("\nimage processing thread WCET is %ld sec, %ld msec (%ld microsec)\n", thread_dt.tv_sec, (thread_dt.tv_nsec / NSEC_PER_MSEC), (thread_dt.tv_nsec / NSEC_PER_MICROSEC));
 		rc = pthread_mutex_unlock(&lock);
 		if(rc!= 0)
 			handle_error("Mutex unlock");
@@ -250,17 +244,13 @@ void *motor_working(void *)
 		if(rc!= 0)
 			handle_error("Mutex lock");
      clock_gettime(CLOCK_REALTIME, &start_time);
-   // printf("right FLAG %d",right_flag);
-   //  printf(" left FLAG %d",left_flag);
+ 
      
 		if(right_flag == 1)
 		{
 			right();
 			right_flag = 0;
-			//timeset();
-			//printf("right");
-			//fflush(stdout);
-			//timeflag=1;
+		
 			
 			
 		}
@@ -268,20 +258,14 @@ void *motor_working(void *)
 		{
 			left();
 			left_flag=0;
-			//timeset();
-			//printf("left");
-			//fflush(stdout);
-			//timeflag=1;
+		
 			
 		}
 		else if(straight_flag == 1)
 		{
 			straight();
 			straight_flag = 0;
-			//t/meset();
-			//printf("straight");
-			//fflush(stdout);
-			//timeflag=1;
+		
 			
 		}
 		else
@@ -301,17 +285,7 @@ void *motor_working(void *)
 
 int main()
 {
-	//blink_timer_init1();
-
-	/*
-		gpio_export(21);	
-		gpio_dir(21,"out");
-		gpio_set_value(21,1);
-		printf("%d",gpio_get_value(21));
-		gpio_blink(21);
-		printf("blink");
-	    while(1);*/
-
+	
 	int rt_max_prio, i;
 	//CvCapture* capture = (CvCapture *)cvCreateCameraCapture(0);
     //CvCapture* capture = (CvCapture *)cvCreateCameraCapture(argv[1]);
@@ -398,7 +372,7 @@ rc = pthread_create(&threads[2],   // pointer to thread descriptor
 	return 0; 
 } 
 
-	int gpio_export(uint32_t pin)
+	int pin_export(uint32_t pin)
 	{
 		FILE *fp;
 	
@@ -412,7 +386,7 @@ rc = pthread_create(&threads[2],   // pointer to thread descriptor
 		return 0;
 	} 
 	
-	int gpio_dir(uint32_t pin, const char *dir)
+	int pin_dir(uint32_t pin, const char *dir)
 	{
 		FILE *fp;
 		char path[50];
@@ -429,7 +403,7 @@ rc = pthread_create(&threads[2],   // pointer to thread descriptor
 		return 0;
 	} 
 	
-	int gpio_set_value(uint32_t pin, uint32_t val)
+	int write_value(uint32_t pin, uint32_t val)
 	{
 		FILE *fp;
 		char path[50];
@@ -446,7 +420,7 @@ rc = pthread_create(&threads[2],   // pointer to thread descriptor
 		return 0;
 	} 
 	
-	int gpio_get_value(uint32_t pin)
+	int read_value(uint32_t pin)
 {
 	FILE *fp;
 	char path[50];
@@ -468,77 +442,77 @@ rc = pthread_create(&threads[2],   // pointer to thread descriptor
 	void cw1()
 	{
 		//AIn1
-		gpio_export(17);
-		gpio_dir(17,"out");
-		gpio_set_value(17, 1);
+		pin_export(17);
+		pin_dir(17,"out");
+		write_value(17, 1);
 		
 		//AIn2
-		gpio_export(27);
-		gpio_dir(27,"out");
-		gpio_set_value(27, 0);
+		pin_export(27);
+		pin_dir(27,"out");
+		write_value(27, 0);
 		
 		//PWMA
-		gpio_export(22);
-		gpio_dir(22,"out");
+		pin_export(22);
+		pin_dir(22,"out");
 		//gpio_set_value(22, 1);
-		gpio_blink(22);
+		pwm_gen(22);
 	}
 	
 	void stop1()
 	{
 		//AIn1
-		gpio_export(17);
-		gpio_dir(17,"out");
-		gpio_set_value(17, 0);
+		pin_export(17);
+		pin_dir(17,"out");
+		write_value(17, 0);
 		
 		//AIn2
-		gpio_export(27);
-		gpio_dir(27,"out");
-		gpio_set_value(27, 0);
+		pin_export(27);
+		pin_dir(27,"out");
+		write_value(27, 0);
 		
 		//PWMA
-		gpio_export(22);
-		gpio_dir(22,"out");
+		pin_export(22);
+		pin_dir(22,"out");
 		//gpio_set_value(22, 1);
-		gpio_blink(22);
+		pwm_gen(22);
 	}
 	
 	void cw2()
 	{
 		//BIn1
-		gpio_export(26);
-		gpio_dir(26,"out");
-		gpio_set_value(26, 1);
+		pin_export(26);
+		pin_dir(26,"out");
+		write_value(26, 1);
 		
 		//BIn2
-		gpio_export(19);
-		gpio_dir(19,"out");
-		gpio_set_value(19, 0);
+		pin_export(19);
+		pin_dir(19,"out");
+		write_value(19, 0);
 		
 		//PWMB
-		gpio_export(13);
-		gpio_dir(13,"out");
+		pin_export(13);
+		pin_dir(13,"out");
 		//gpio_set_value(13, 1);
-		gpio_blink(13);
+		pwm_gen(13);
 	}
 	
 	void stop2()
 	{
 		//BIn1
-		gpio_export(26);
-		gpio_dir(26,"out");
-		gpio_set_value(26, 0);
+		pin_export(26);
+		pin_dir(26,"out");
+		write_value(26, 0);
 		
 		//BIn2
-		gpio_export(19);
-		gpio_dir(19,"out");
-		gpio_set_value(19, 0);
+		pin_export(19);
+		pin_dir(19,"out");
+		write_value(19, 0);
 		
 		//PWMB
-		gpio_export(13);
-		gpio_dir(13,"out");
+		pin_export(13);
+		pin_dir(13,"out");
 		//gpio_set_value(13, 1);
-		gpio_blink(13);
+		pwm_gen(13);
 	}
 	
 	void left()
@@ -595,7 +569,7 @@ int delta_t(struct timespec *stop, struct timespec *start, struct timespec *delt
   return(1);
 }
 
-int gpio_blink(uint32_t pin)
+int pwm_gen(uint32_t pin)
 {
 
 	blink_timer_init(pin);
@@ -604,7 +578,7 @@ int gpio_blink(uint32_t pin)
 int gpio_blink_off(uint32_t pin)
 {
 	timer_delete(blink_timer_id);
-	gpio_set_value(pin, 0);
+	write_value(pin, 0);
 
 	return 0;
 }
@@ -650,14 +624,14 @@ void blink_timer_handle(union sigval sv)
 	uint32_t led;
 	static uint32_t count=0;
 
-	led = gpio_get_value(sv.sival_int);
+	led = read_value(sv.sival_int);
 	if(count == 0)
 	{
-		gpio_set_value(sv.sival_int,0);
+		write_value(sv.sival_int,0);
 	}
 	else
 	{
-		gpio_set_value(sv.sival_int,1);
+		write_value(sv.sival_int,1);
 	}
 	count++;
 	if (count == 5)
