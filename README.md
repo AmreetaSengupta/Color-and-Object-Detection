@@ -1,6 +1,8 @@
 # Color-and-Object-Detection
 Contains code for Moving Object Detection and Following Robot using Raspberry Pi on Linux.
 
+The code involves:
+
 --> Development of an algorithm for color and shape detection of the ball using OpenCV.
 
 --> Development of an algorithm for object detection and control of motor using PWM to drive the motor.
