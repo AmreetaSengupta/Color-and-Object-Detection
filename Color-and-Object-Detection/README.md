@@ -8,4 +8,5 @@ The code involves:
 --> Development of an algorithm for object detection and control of motor using PWM to drive the motor.
 
 --> Design of a scheduler to meet the real time deadlines for the threads performing the tasks above using Embedded Linux as Real
-            Time Operating System
+    
+    Time Operating System
