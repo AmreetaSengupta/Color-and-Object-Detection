@@ -30,7 +30,8 @@
 
 #define handle_error(msg) \
 			{ perror(msg); \
-				exit(1); }
+			  exit(1); 
+			}
 
 using namespace cv;
 using namespace std;
@@ -90,13 +91,15 @@ pthread_t threads[NUM_THREADS]; //Thread Descriptors
 int e1;
 int timeflag=0;
 
+/************************************SEQUENCER THREAD*******************************************/
+
 void *sequencer(void *)
 {
     struct timespec delay_time = {0,300000000}; // delay for 350 msec
     struct timespec remaining_time;
     double residual;
     int rc, delay_cnt=0;
-  struct timespec start_time = {0, 0};
+    struct timespec start_time = {0, 0};
     struct timespec finish_time = {0, 0};
     struct timespec thread_dt = {0, 0};
   
@@ -104,7 +107,7 @@ void *sequencer(void *)
     do
     {
         delay_cnt=0; residual=0.0;
-clock_gettime(CLOCK_REALTIME, &start_time);
+		clock_gettime(CLOCK_REALTIME, &start_time);
         //gettimeofday(&current_time_val, (struct timezone *)0);
         //syslog(LOG_CRIT, "Sequencer thread prior to delay @ sec=%d, msec=%d\n", (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);
         do
@@ -133,7 +136,7 @@ clock_gettime(CLOCK_REALTIME, &start_time);
          sem_post(&semS1);
 
         sem_post(&semS2);
-clock_gettime(CLOCK_REALTIME, &finish_time);
+		clock_gettime(CLOCK_REALTIME, &finish_time);
 		delta_t(&finish_time, &start_time, &thread_dt);
 		printf("\nSequencer thread WCET is %ld sec, %ld msec (%ld microsec)\n", thread_dt.tv_sec, (thread_dt.tv_nsec / NSEC_PER_MSEC), (thread_dt.tv_nsec / NSEC_PER_MICROSEC));
    
@@ -149,24 +152,26 @@ clock_gettime(CLOCK_REALTIME, &finish_time);
     pthread_exit((void *)0);
 }
 
+/************************************COLOR AND SHAPE DETECTION THREAD*******************************************/
+
 void *image_detect(void *)
 {
 	int difference;
-	 struct timespec start_time = {0, 0};
+	struct timespec start_time = {0, 0};
     struct timespec finish_time = {0, 0};
     struct timespec thread_dt = {0, 0};
 	while(e1)
 	{
-		 sem_wait(&semS1);
-		 rc = pthread_mutex_lock(&lock);
+		sem_wait(&semS1);
+		rc = pthread_mutex_lock(&lock);
 		if(rc!= 0)
-			handle_error("Mutex lock");
+		handle_error("Mutex lock");
 		cvNamedWindow("Capture Example", CV_WINDOW_AUTOSIZE);
 		IplImage* frame;
 		Mat gray;
 		vector<Vec3f> circles;
 		
-		  clock_gettime(CLOCK_REALTIME, &start_time);
+		clock_gettime(CLOCK_REALTIME, &start_time);
 		frame=cvQueryFrame(capture);
 
         Mat mat_frame(frame);
@@ -177,31 +182,29 @@ void *image_detect(void *)
 		inRange(gray, Scalar(75, 100, 100), Scalar(100, 150, 255), lower_red_hue_range);
 		inRange(gray, Scalar(101,100, 100), Scalar(130, 150, 255), upper_red_hue_range);
 
-		// Combine the above two images
+		//Combine the above two images
 		Mat red_hue_image;
 		addWeighted(lower_red_hue_range, 1.0, upper_red_hue_range, 1.0, 0.0, red_hue_image);
         GaussianBlur(red_hue_image,red_hue_image, Size(9,9), 2, 2);
         //Find Circles
         HoughCircles(red_hue_image, circles, CV_HOUGH_GRADIENT, 1, red_hue_image.rows/8, 100, 30, 0,0 );
 
-       // printf("circles.size = %d\n", circles.size());
+        //printf("circles.size = %d\n", circles.size());
 	    //Draw detected circles
         for( size_t i = 0; i < circles.size(); i++ )
         {
           Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
           int radius = cvRound(circles[i][2]);
-       //   printf("center x=%d y=%d \n",cvRound(circles[i][0]),cvRound(circles[i][1]));
+          //printf("center x=%d y=%d \n",cvRound(circles[i][0]),cvRound(circles[i][1]));
           difference=320-cvRound(circles[i][0]);
-        //  printf("difference %d \n",difference);
+    
           if(difference < -120)
           {
 			  right_flag = 1;
-			//  printf(" right flag is 1\n");
 		  }
           else if(difference > 120)
           {
 			  left_flag =1;
-			 // printf(" left flag is 1\n");
 		  }
 		  else
 		  {
@@ -224,56 +227,57 @@ void *image_detect(void *)
 	  cvNamedWindow("Threshold lower image", CV_WINDOW_AUTOSIZE);
 	
 
-        char c = cvWaitKey(10);
-        if( c == 27 ) break;
-          clock_gettime(CLOCK_REALTIME, &finish_time);
-		delta_t(&finish_time, &start_time, &thread_dt);
-		//printf("\nimage processing thread WCET is %ld sec, %ld msec (%ld microsec)\n", thread_dt.tv_sec, (thread_dt.tv_nsec / NSEC_PER_MSEC), (thread_dt.tv_nsec / NSEC_PER_MICROSEC));
-		rc = pthread_mutex_unlock(&lock);
-		if(rc!= 0)
-			handle_error("Mutex unlock");
+      char c = cvWaitKey(10);
+      if( c == 27 ) break;
+      clock_gettime(CLOCK_REALTIME, &finish_time);
+      delta_t(&finish_time, &start_time, &thread_dt);
+      //printf("\nimage processing thread WCET is %ld sec, %ld msec (%ld microsec)\n", thread_dt.tv_sec, (thread_dt.tv_nsec / NSEC_PER_MSEC), (thread_dt.tv_nsec / NSEC_PER_MICROSEC));
+	  rc = pthread_mutex_unlock(&lock);
+	  if(rc!= 0)
+	  handle_error("Mutex unlock");
 	}
 	 pthread_exit((void *)0);
 }
+
+/************************************MOTOR THREAD*******************************************/
 
 void *motor_working(void *)
 {
 	while(e1)
 
 	{
-		  sem_wait(&semS2);
+		sem_wait(&semS2);
 		  
-		 struct timespec start_time = {0, 0};
-    struct timespec finish_time = {0, 0};
-    struct timespec thread_dt = {0, 0};
-    rc = pthread_mutex_lock(&lock);
+		struct timespec start_time = {0, 0};
+		struct timespec finish_time = {0, 0};
+	    struct timespec thread_dt = {0, 0};
+	    rc = pthread_mutex_lock(&lock);
 		if(rc!= 0)
-			handle_error("Mutex lock");
-     clock_gettime(CLOCK_REALTIME, &start_time);
+		handle_error("Mutex lock");
+        clock_gettime(CLOCK_REALTIME, &start_time);
  
      
 		if(right_flag == 1)
 		{
 			right();
-			right_flag = 0;
-		
-			
+			right_flag = 0;	
 			
 		}
+		
 		else if(left_flag == 1)
 		{
 			left();
 			left_flag=0;
 		
-			
 		}
+		
 		else if(straight_flag == 1)
 		{
 			straight();
 			straight_flag = 0;
 		
-			
 		}
+		
 		else
 		{
 			stop1();
@@ -284,7 +288,7 @@ void *motor_working(void *)
 		//printf("\n motor thread WCET is %ld sec, %ld msec (%ld microsec)\n", thread_dt.tv_sec, (thread_dt.tv_nsec / NSEC_PER_MSEC), (thread_dt.tv_nsec / NSEC_PER_MICROSEC));
 		rc = pthread_mutex_unlock(&lock);
 		if(rc!= 0)
-			handle_error("Mutex unlock");
+		handle_error("Mutex unlock");
 	}
 	 pthread_exit((void *)0);
 }
@@ -349,7 +353,7 @@ int main()
 	perror("pthread create");
 
 
-rc = pthread_create(&threads[2],   // pointer to thread descriptor
+	rc = pthread_create(&threads[2],   // pointer to thread descriptor
 						  &rt_sched_attr[2],     // thread attributes object                      
 						  motor_working, // thread function entry point
 						  (void *)0 // parameters to pass in
@@ -427,23 +431,25 @@ rc = pthread_create(&threads[2],   // pointer to thread descriptor
 	} 
 	
 	int read_value(uint32_t pin)
-{
-	FILE *fp;
-	char path[50];
-	uint32_t val;
+	{
+		FILE *fp;
+		char path[50];
+		uint32_t val;
+	
+		snprintf(path, 50, GPIO_DIR "/gpio%d/value",pin);
+	
+		fp = fopen(path, "r");
+		if(fp == NULL)
+			return -1;
+	
+		val = (uint32_t)fgetc(fp);
+		val -= 48;
+	
+		fclose(fp);
+		return val;
+	} 
 
-	snprintf(path, 50, GPIO_DIR "/gpio%d/value",pin);
-
-	fp = fopen(path, "r");
-	if(fp == NULL)
-		return -1;
-
-	val = (uint32_t)fgetc(fp);
-	val -= 48;
-
-	fclose(fp);
-	return val;
-} 
+/************************************ROTATION, PWM AND STOP SIGNALS FOR MOTOR 1*******************************************/
 
 	void cw1()
 	{
@@ -482,6 +488,8 @@ rc = pthread_create(&threads[2],   // pointer to thread descriptor
 		//gpio_set_value(22, 1);
 		pwm_gen(22);
 	}
+
+/************************************ROTATION, PWM AND STOP SIGNALS FOR MOTOR 2*******************************************/
 	
 	void cw2()
 	{
@@ -520,6 +528,8 @@ rc = pthread_create(&threads[2],   // pointer to thread descriptor
 		//gpio_set_value(13, 1);
 		pwm_gen(13);
 	}
+
+/************************************DIRECTION SIGNALS FOR MOTORS*******************************************/
 	
 	void left()
 	{
