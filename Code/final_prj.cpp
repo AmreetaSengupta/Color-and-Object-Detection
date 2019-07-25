@@ -162,12 +162,16 @@ void *image_detect(void *)
 		Mat gray;
 		vector<Vec3f> circles;
 		
-		clock_gettime(CLOCK_REALTIME, &start_time);
+	    clock_gettime(CLOCK_REALTIME, &start_time);
+	    
 		frame=cvQueryFrame(capture);
-
-        Mat mat_frame(frame);
+		
+		Mat mat_frame(frame);
+		
         medianBlur(mat_frame,mat_frame, 3);
+        
         cvtColor(mat_frame, gray, COLOR_BGR2HSV);
+        
         Mat lower_red_hue_range;
 		Mat upper_red_hue_range;
 	    inRange(gray, Scalar(75, 100, 100), Scalar(100, 150, 255), lower_red_hue_range);
@@ -675,7 +679,7 @@ void setsig_handler(void)
     action.sa_sigaction = signal_handler;
  
     if (sigaction(SIGINT, &action, NULL) == -1)
-		handle_error("SIGINT: sigaction")
+	handle_error("SIGINT: sigaction")
 }
 
 void signal_handler(int signo, siginfo_t *info, void *extra) 
