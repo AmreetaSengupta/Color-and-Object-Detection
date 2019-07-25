@@ -108,8 +108,7 @@ void *sequencer(void *)
     {
         delay_cnt=0; residual=0.0;
 		clock_gettime(CLOCK_REALTIME, &start_time);
-        //gettimeofday(&current_time_val, (struct timezone *)0);
-        //syslog(LOG_CRIT, "Sequencer thread prior to delay @ sec=%d, msec=%d\n", (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);
+    
         do
         {
             rc=nanosleep(&delay_time, &remaining_time);
@@ -130,20 +129,12 @@ void *sequencer(void *)
            
         } while((residual > 0.0) && (delay_cnt < 100));
 
-       // seqCnt++;
-
-
-         sem_post(&semS1);
-
-        sem_post(&semS2);
+		sem_post(&semS1);
+		sem_post(&semS2);
 		clock_gettime(CLOCK_REALTIME, &finish_time);
 		delta_t(&finish_time, &start_time, &thread_dt);
 		printf("\nSequencer thread WCET is %ld sec, %ld msec (%ld microsec)\n", thread_dt.tv_sec, (thread_dt.tv_nsec / NSEC_PER_MSEC), (thread_dt.tv_nsec / NSEC_PER_MICROSEC));
-   
-       
-        //gettimeofday(&current_time_val, (struct timezone *)0);
-        //syslog(LOG_CRIT, "Sequencer release all sub-services @ sec=%d, msec=%d\n", (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);
-
+  
     } while(e1);
 
     sem_post(&semS1); 
@@ -179,7 +170,7 @@ void *image_detect(void *)
         cvtColor(mat_frame, gray, COLOR_BGR2HSV);
         Mat lower_red_hue_range;
 		Mat upper_red_hue_range;
-		inRange(gray, Scalar(75, 100, 100), Scalar(100, 150, 255), lower_red_hue_range);
+	    inRange(gray, Scalar(75, 100, 100), Scalar(100, 150, 255), lower_red_hue_range);
 		inRange(gray, Scalar(101,100, 100), Scalar(130, 150, 255), upper_red_hue_range);
 
 		//Combine the above two images
@@ -195,7 +186,6 @@ void *image_detect(void *)
         {
           Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
           int radius = cvRound(circles[i][2]);
-          //printf("center x=%d y=%d \n",cvRound(circles[i][0]),cvRound(circles[i][1]));
           difference=320-cvRound(circles[i][0]);
     
           if(difference < -120)
@@ -231,7 +221,6 @@ void *image_detect(void *)
       if( c == 27 ) break;
       clock_gettime(CLOCK_REALTIME, &finish_time);
       delta_t(&finish_time, &start_time, &thread_dt);
-      //printf("\nimage processing thread WCET is %ld sec, %ld msec (%ld microsec)\n", thread_dt.tv_sec, (thread_dt.tv_nsec / NSEC_PER_MSEC), (thread_dt.tv_nsec / NSEC_PER_MICROSEC));
 	  rc = pthread_mutex_unlock(&lock);
 	  if(rc!= 0)
 	  handle_error("Mutex unlock");
@@ -285,7 +274,6 @@ void *motor_working(void *)
 		}
 		clock_gettime(CLOCK_REALTIME, &finish_time);
 		delta_t(&finish_time, &start_time, &thread_dt);
-		//printf("\n motor thread WCET is %ld sec, %ld msec (%ld microsec)\n", thread_dt.tv_sec, (thread_dt.tv_nsec / NSEC_PER_MSEC), (thread_dt.tv_nsec / NSEC_PER_MICROSEC));
 		rc = pthread_mutex_unlock(&lock);
 		if(rc!= 0)
 		handle_error("Mutex unlock");
